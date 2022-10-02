@@ -1,27 +1,15 @@
 import React, { useState } from 'react'
-import { create, CID, IPFSHTTPClient } from 'ipfs-http-client'
-const Main = () => {
-  let ipfs: IPFSHTTPClient | undefined
-  const projectId = '<YOUR PROJECT ID>'
-  const projectSecret = '<YOUR PROJECT SECRET>'
-  const authorization =
-    'Basic ' + Buffer.from(projectId + ':' + projectSecret, 'base64')
-  try {
-    ipfs = create({
-      url: 'https://ipfs.infura.io:5001/api/v0',
-      headers: {
-        authorization,
-      },
-    })
-  } catch (error) {
-    console.error('IPFS error ', error)
-    ipfs = undefined
-  }
-  const [loading, setLoading] = useState(false)
+import { getFilesFromPath } from 'web3.storage'
+import { makeStorageClient } from '../utils/Web3Storage'
+const Main = ({ contract, account, loading, setLoading }: any) => {
   const [description, setDescription] = useState('')
-  const [filesToUpload, setFilesToUpload] = React.useState<
-    { cid: CID; path: string }[]
-  >([])
+
+  async function storeFiles(files: any) {
+    const client = makeStorageClient()
+    const cid = await client.put(files)
+    console.log('stored files with cid:', cid)
+    return cid
+  }
 
   /**
    * @description event handler that uploads the file selected by the user
@@ -37,36 +25,63 @@ const Main = () => {
     if (!description || description.length === 0) {
       return alert('no description provided')
     }
+    if (loading) {
+      return alert('wait ')
+    }
     setLoading(true)
 
-    const file = files[0]
+    const file = [files[0]]
+
     // upload files
-    const result = await (ipfs as IPFSHTTPClient).add(file)
-    setFilesToUpload([
-      ...filesToUpload,
-      {
-        cid: result.cid,
-        path: result.path,
-      },
-    ])
-    setLoading(false)
-    form.reset()
+    let cid = await storeFiles(files)
+
+    let uploadedFile = file[0]
+    contract.methods
+      .uploadFile(
+        cid,
+        uploadedFile.size,
+        uploadedFile.type,
+        uploadedFile.name,
+        description,
+      )
+      .send({ from: account })
+      .on('transactionHash', (hash: any) => {
+        setLoading(false)
+        form.reset()
+        window.location.reload()
+      })
+      .on('eror', (e: any) => {
+        window.alert('error')
+        console.log(e)
+      })
   }
   return (
-    <div>
-      {ipfs ? (
-        <form onSubmit={onSubmitHandler}>
+    <div className="w-[450px] h-[160px] border border-blue-200 rounded-lg p-4 flex justify-center items-center">
+      <form
+        onSubmit={onSubmitHandler}
+        className="flex flex-col w-full h-full justify-between items-center"
+      >
+        <input
+          className="bg-transparent outline-0 w-full"
+          placeholder="File description"
+          id="fileSescription"
+          type="text"
+          onChange={(e) => setDescription(e.target.value)}
+        />
+        <label className="block w-full">
+          <span className="sr-only">Choose File</span>
           <input
-            id="fileSescription"
-            type="text"
-            onChange={(e) => setDescription(e.target.value)}
+            type="file"
+            className="outline-0 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
           />
-          <input name="file" type="file" />
-          <button type="submit">Upload File</button>
-        </form>
-      ) : (
-        <p>Oh oh, Not connected to IPFS. Checkout out the logs for errors</p>
-      )}
+        </label>
+        <button
+          type="submit"
+          className="w-[350px] h-[37px] rounded-lg bg-blue-500 text-white"
+        >
+          Upload File
+        </button>
+      </form>
     </div>
   )
 }
