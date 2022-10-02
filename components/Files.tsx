@@ -39,13 +39,14 @@ const Files = ({ filesToShow }: any) => {
                 .filter((e: any) => e.fileHash.length > 0)
                 .sort((a: any, b: any) => b.uploadTime - a.uploadTime)
                 .map((file: any, key: number) => (
-                  <tr>
+                  <tr key={key}>
                     <td className="px-5 py-5 border-b border-gray-200 bg-white text-sm">
                       <div className="flex">
                         <div className="flex-shrink-0 w-10 h-10 flex justify-center items-center">
                           <a
                             href={`https://${file.fileHash}.ipfs.w3s.link/${file.fileName}`}
                             target="_blank"
+                            rel="noreferrer"
                           >
                             <img src="/files.png" alt="" />
                           </a>
@@ -90,6 +91,7 @@ const Files = ({ filesToShow }: any) => {
                         <a
                           href={`https://debank.com/profile/${file.uploader}`}
                           target="_blank"
+                          rel="noreferrer"
                         >
                           {file.uploader.slice(0, 20)}...
                         </a>
